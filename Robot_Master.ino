@@ -102,9 +102,7 @@ void loop()
 
   //move through the maze 
   maze();
-
 }
-
 
 //Section to measure distance of left wall
 void left_wall_cm() //convert distance into cm 
@@ -163,7 +161,7 @@ void read_front_cm() //convert distance into cm
   }
 
 }
-
+//distance sensor sensing 
 void SonarSensor(int trigPin,int echoPin)
 {
   //send out an ultrasonic pulse that's 50ms long
@@ -181,55 +179,13 @@ void SonarSensor(int trigPin,int echoPin)
 //Section to pick up cylinder 
 void pick_up_cylinder()
 {
-  Serial.println("picking up cylinder");
-  delay(500); 
   
-  arm_open();
-  Serial.println("open"); 
-  delay (1500);
-
-  arm_down(); 
-  Serial.println("down");
-  delay (1500);
-
-  arm_close(); 
-  Serial.println("close");
-  delay (1500);
-
-  arm_up(); 
-  Serial.println("up");
-  delay (3000);
-
-  arm_open();
-  Serial.println("open"); 
-  delay (1500);
-    return;  
 
 }
-//arm movements 
-void arm_close()
-{
-  myservo.write(0);              // tell servo to go to position in variable 'pos'
-  delay(15);                       // waits 15 ms for the servo to reach the position
-}
 
-void arm_open()
-{
-  myservo.write(75);              // tell servo to go to position in variable 'pos'
-  delay(15); 
-}
+//arm movements
+  
 
-void arm_down()
-{
-  myservo2.write(0);              // tell servo to go to position in variable 'pos'
-  delay(150);               // waits 15 ms for the servo to reach the position
-}
-
-void arm_up()
-{
-  myservo2.write(90);              // tell servo to go to position in variable 'pos'
-  delay(150);                       // waits 15 ms for the servo to reach the position
-}
 
 void turn_around()
 {
@@ -241,10 +197,469 @@ void turn_around()
   delay (50000); //adjust to be specific amount of turning 180 degress
 }
 
+
+
 //maze 
 void maze()
 {
-forward
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(150);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft();
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft();
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright();
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+  
+  //pick up one cylinder 
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft();
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft();
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright();
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright();
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    //follow_line(); 
+    motor_forward();
+    delay(1000);
+  }
+
+  motor_sharpright();
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000); 
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000); 
+
+  while (distance_Lwall <  20) 
+  {
+    motor_forward();
+    delay(1000); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    motor_forward();
+    delay(1000);  
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    motor_forward();
+    delay(1000);  
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+
+//IF THRE CYLINDERS HAVE BEEN COLLECTED 
+  while (distance_Lwall <  20) 
+  {
+    motor_forward();
+    delay(1000);
+  }
+
+  motor_sharpleft();
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft();
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_stop(); 
+
+//IF NOT KEEP GOING 
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright (); 
+  delay(1000); 
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright (); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright (); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_turnaround(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpright(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Lwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_sharpleft(); 
+  delay(1000);
+
+  while (distance_Rwall <  20) 
+  {
+    follow_line(); 
+  }
+
+  motor_stop():
+
+/*forward
 sharpright
 forward
 junction-left
@@ -305,12 +720,12 @@ foward
 right 
 forward 
 
-//if all three cylinders have been found 
+//if all three cylinders have been found exit the maze 
 left 
 left
 exit
 
-//if not all of the cylinders have been found 
+//if not all of the cylinders have been found keep searching and then exit 
 right 
 forward
 right 
@@ -357,5 +772,6 @@ right
 forward
 left 
 left
-exit
+exit*/
 }
+
