@@ -1,0 +1,63 @@
+#include <Servo.h>
+ // create Servo object to control a servo
+ //base servo 
+Servo myservo; 
+//arm servo 
+Servo myservo2; 
+
+
+void setup() 
+{
+  //attach the servos 
+  //base servo
+  myservo.attach(10);  
+  //arm servo 
+  myservo2.attach(9);
+}
+
+void loop() 
+{
+  arm_open();
+  Serial.println("op"); 
+  delay (1500);
+
+
+  arm_up(); 
+  Serial.println("up");
+  delay (1500);
+
+  arm_close(); 
+  Serial.println("cl");
+  delay (1500);
+
+  arm_down(); 
+  Serial.println("d");
+  delay (1500);
+
+}
+
+void arm_open()
+{
+  myservo2.write(2);              // tell servo to go to position in variable 'pos'
+  delay(15);                       // waits 15 ms for the servo to reach the position
+}
+
+void arm_close()
+{
+  myservo2.write(90);              // tell servo to go to position in variable 'pos'
+  delay(15); 
+}
+
+void arm_up()
+{
+  myservo.write(175);              // tell servo to go to position in variable 'pos'
+  delay(15);               // waits 15 ms for the servo to reach the position
+}
+
+void arm_down()
+{
+  myservo.write(90);              // tell servo to go to position in variable 'pos'
+  delay(15);                       // waits 15 ms for the servo to reach the position
+}
+
+    
