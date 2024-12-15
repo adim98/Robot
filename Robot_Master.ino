@@ -13,25 +13,26 @@ Servo myservo2;
 //Distance Sensors 
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 float distance = 0; 
+
 //cylinder sensor
-#define trigPin1 5
-#define echoPin1 4
+#define trigPin1 2
+#define echoPin1 1
 
 //front wall sensor
-#define trigPin2 0
-#define echoPin2 1
+#define trigPin2 8
+#define echoPin2 7
 
 //Left wall sensor
-#define trigPin3 13
-#define echoPin3 12
+#define trigPin3 0
+#define echoPin3 4
 
 //right wall sensor 
-#define trigPin4 8
-#define echoPin4 7
+#define trigPin4 13
+#define echoPin4 12
 
 //Motors 
-CytronMD motor1(PWM_PWM, 2, 3);   // PWM 1A = Pin 2, PWM 1B = Pin 3.
-CytronMD motor2(PWM_PWM, 11, 12); // PWM 2A = Pin 11, PWM 2B = Pin 12.
+CytronMD motor1(PWM_PWM, 3,5 );   // PWM 1A = Pin 2, PWM 1B = Pin 3.
+CytronMD motor2(PWM_PWM, 6, 11); // PWM 2A = Pin 11, PWM 2B = Pin 12.
 
 // Light Sensor variables
 QTRSensors qtr;
@@ -54,6 +55,14 @@ void setup()
   myservo.attach(10);  
   //base servo 
   myservo2.attach(9);
+
+  //move the servos into position
+  myservo.write(0);
+
+  myservo2.write(90);
+
+  delay(1500);
+  boolean down = false;
   
   //establish wall sensor setup
   pinMode(trigPin1, OUTPUT);                         //the trigger pin will output pulses of electricity
@@ -87,10 +96,6 @@ void setup()
   
   delay(3000);
 
-}
-
-void loop() 
-{
   //set the servos into place 
   arm_up(); 
   arm_open();
@@ -102,6 +107,12 @@ void loop()
 
   //move through the maze 
   maze();
+
+}
+
+void loop() 
+{
+
 }
 
 //Section to measure distance of left wall
@@ -123,7 +134,7 @@ void right_wall_cm() //convert distance into cm
 }
 
 //Section to measure distance in front 
-void read_front_cm() //convert distance into cm 
+void read_front_cm() 
 {
   int cyl_detected = 7;              //desired cm from cylinder
   SonarSensor(trigPin3, echoPin3);
@@ -179,12 +190,97 @@ void SonarSensor(int trigPin,int echoPin)
 //Section to pick up cylinder 
 void pick_up_cylinder()
 {
-  
+
+  Serial.println("picking up cylinder");
+
+  delay(500);
+
+
+  arm_open();
+
+  Serial.println("op");
+
+  delay (1500);
+
+
+  arm_down();
+
+  Serial.println("down");
+
+  delay (1500);
+
+
+  arm_close();
+
+  Serial.println("cl");
+
+  delay (1500);
+
+
+  arm_up();
+
+  Serial.println("up");
+
+  delay (3000);
+
+
+  arm_open();
+
+  Serial.println("op");
+
+  delay (1500);
 
 }
 
 //arm movements
-  
+void arm_close()
+
+{
+
+  myservo2.write(60); // tell servo to go to position in variable 'pos'
+
+  delay(15); // waits 15 ms for the servo to reach the position
+
+}
+
+
+void arm_open()
+
+{
+
+  myservo2.write(150); // tell servo to go to position in variable 'pos'
+
+  delay(15);
+
+}
+
+
+void arm_down()
+
+{
+
+  for(int i =90; i > 0; i--){
+
+  myservo.write(i);
+
+  delay(25); // tell servo to go to position in variable 'pos
+
+}
+
+  myservo.write(0); // tell servo to go to position in variable 'pos'
+
+  delay(150); // waits 15 ms for the servo to reach the position
+
+}
+
+
+void arm_up()
+
+{
+
+  myservo.write(60); // tell servo to go to position in variable 'pos' // waits 15 ms for the servo to reach the position
+
+}
 
 
 void turn_around()
@@ -197,6 +293,111 @@ void turn_around()
   delay (50000); //adjust to be specific amount of turning 180 degress
 }
 
+//Line follwoing 
+void followLine() {
+  
+  uint16_t position = qtr.readLineBlack(sensorValues);
+  int error = position - 2500;
+  float lastError = error;
+  float motorSpeed = Kp * error + Kd * (error - lastError);
+
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    Serial.print(sensorValues[i]);
+    Serial.print('\t');
+  }
+  Serial.println(position);
+
+  // too Right, Robot will go left
+  if (position == 5000) {
+    //motor_stop();
+    delay(100);
+    //motor_turnright();
+    delay(100);
+    Serial.println("stop");
+
+  } 
+  else if (position > 3200) {
+    motor1.setSpeed(BaseSpeed);
+    motor2.setSpeed(BaseSpeed);
+    motor_turnleft();
+    return;
+  } 
+  else if (position < 1700) {
+    motor1.setSpeed(BaseSpeed);
+    motor2.setSpeed(BaseSpeed);
+    motor_turnright();
+    return;
+  }
+  else {
+    motor_adjust(error);
+    return;
+  }
+
+
+
+  Serial.print("Error: ");
+  Serial.println(error);
+ 
+
+  int rightMotorSpeed = BaseSpeed + motorSpeed;
+  int leftMotorSpeed = BaseSpeed + motorSpeed;
+
+  if (rightMotorSpeed > MaxSpeed) rightMotorSpeed = MaxSpeed;
+  if (leftMotorSpeed > MaxSpeed) leftMotorSpeed = MaxSpeed;
+  if (rightMotorSpeed < 0) rightMotorSpeed = 0;
+  if (leftMotorSpeed < 0) leftMotorSpeed = 0;
+  
+
+  motor1.setSpeed(rightMotorSpeed);
+  motor2.setSpeed(leftMotorSpeed);
+  motor_forward();
+  Serial.println("forward");
+  
+  read_front_cm(); 
+}
+
+void motor_turnleft() {
+  motor1.setSpeed(TurnSpeed);   // Motor 1 runs forward at half speed.
+  motor2.setSpeed(-TurnSpeed);  // Motor 2 runs backward at half speed.
+  Serial.println("left");
+  delay(500);
+}
+
+void motor_turnright() {
+  motor1.setSpeed(-TurnSpeed);  // Motor 1 runs backward at half speed.
+  motor2.setSpeed(TurnSpeed);   // Motor 2 runs forward at half speed.
+  Serial.println("right");
+  delay(500);
+}
+void motor_forward() {
+  motor1.setSpeed(BaseSpeed);  // Motor 1 runs forward at full speed.
+  motor2.setSpeed(BaseSpeed);  // Motor 2 runs forward at full speed.
+  Serial.println("forward");
+  delay(1000);
+}
+void motor_stop() {
+  motor1.setSpeed(0);  // Motor 1 stops.
+  motor2.setSpeed(0);  // Motor 2 stops.
+  Serial.println("stop");
+  delay(1000);
+}
+void motor_adjust(int error) {
+  int adjustFactor = error/20;
+  if (error<-1){
+    motor1.setSpeed(BaseSpeed+adjustFactor);
+  }
+  else if (error>1){
+    motor2.setSpeed(BaseSpeed-adjustFactor);
+  }
+  else {
+    motor1.setSpeed(BaseSpeed);
+    motor2.setSpeed(BaseSpeed);
+  }
+  Serial.println(adjustFactor);
+  Serial.println("adjusting");
+  delay(10);
+
+}
 
 
 //maze 
@@ -774,4 +975,3 @@ left
 left
 exit*/
 }
-
