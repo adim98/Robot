@@ -12,7 +12,17 @@ Servo myservo2;
 
 //Distance Sensors 
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-float distance = 0; 
+#define SONAR_NUM 4     // Number of sensors.
+NewPing sonar[SONAR_NUM] = {   // Sensor object array.
+  NewPing(2, 1, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+  NewPing(8, 7, MAX_DISTANCE),
+  NewPing(0, 4, MAX_DISTANCE),
+  NewPing(13, 12, MAX_DISTANCE)
+};
+
+//distance variables
+float distance_Rwall = 0;
+float distance_Lwall = 0;
 
 //cylinder sensor
 #define trigPin1 2
@@ -39,7 +49,9 @@ QTRSensors qtr;
 #define Kp 0.018
 #define Kd 0.0001
 #define MaxSpeed 180
-#define BaseSpeed 55
+#define BaseSpeed 80
+#define TurnSpeed 50
+#define CheckPoint 800
 
 const uint8_t SensorCount = 6;
 // IR Sensors Count
@@ -107,20 +119,14 @@ void setup()
 
   //move through the maze 
   maze();
-
-}
-
-void loop() 
-{
-
 }
 
 //Section to measure distance of left wall
 void left_wall_cm() //convert distance into cm 
 {
-  SonarSensor(trigPin3, echoPin3);
+ 
   int Lwall_distance = 5;            //desired cm from wall 
-  float distance_Lwall = distance;   //variable to store the distance measured by the sensor
+  float distance_Lwall = getDistance(trigPin3, echoPin3);   //variable to store the distance measured by the sensor
   delay (500);                     //wait 500 ms between ping 
 }
 
@@ -128,8 +134,7 @@ void left_wall_cm() //convert distance into cm
 void right_wall_cm() //convert distance into cm 
 {
   int Rwall_distance = 5;            //desired cm from wall
-  SonarSensor(trigPin4, echoPin4);
-  float distance_Rwall = distance;
+  float distance_Rwall = getDistance(trigPin4, echoPin4);
   delay (500);                     //wait 500 ms between ping 
 }
 
@@ -137,15 +142,13 @@ void right_wall_cm() //convert distance into cm
 void read_front_cm() 
 {
   int cyl_detected = 7;              //desired cm from cylinder
-  SonarSensor(trigPin3, echoPin3);
-  float distancefront1 = distance;
+  float distancefront1 = getDistance(trigPin1, echoPin1);
 
   delay (500);                     //wait 500 ms between ping 
 
   if (distancefront1 == cyl_detected) 
   {
-  SonarSensor(trigPin4, echoPin4);
-  float distancefront2 = distance;
+  float distancefront2 = getDistance(trigPin2, echoPin2);
   delay (500);                     //wait 500 ms between ping 
     if (distancefront2 > distancefront1+2)
     {
@@ -160,7 +163,7 @@ void read_front_cm()
       Serial.print(distancefront1);
       Serial.print(" and ");
       Serial.print(distancefront2);
-      turn_around(); 
+      motor_turnaround(); 
       return;
     }
  
@@ -173,19 +176,17 @@ void read_front_cm()
 
 }
 //distance sensor sensing 
-void SonarSensor(int trigPin,int echoPin)
-{
-  //send out an ultrasonic pulse that's 50ms long
+float getDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, HIGH);
-  delayMicroseconds(50);
+  delayMicroseconds(50); // Send a pulse that is 50 ms long
   digitalWrite(trigPin, LOW);
 
-  float echoTime = pulseIn(echoPin, HIGH);      //use the pulsein command to see how long it takes for the pulse to bounce back to the sensor
-  distance = sonar.ping_cm();   //variable to store the distance measured by the sensor
-  return distance; 
-  delay (500);                     //wait 500 ms between ping 
-
+  float echoTime = pulseIn(echoPin, HIGH);
+  float distance = echoTime * 0.0344 / 2; // Calculate distance in cm
+  return distance;
+  delay (500);
 }
+                    
 
 //Section to pick up cylinder 
 void pick_up_cylinder()
@@ -283,18 +284,21 @@ void arm_up()
 }
 
 
-void turn_around()
+void motor_turnaround()
 {
   motor1.setSpeed(0);  // Motor 1 stops.
   motor2.setSpeed(0);  // Motor 2 stops.
   //turn right
   motor1.setSpeed(-100);  // Motor 1 runs backward at full speed.
   motor2.setSpeed(100);   // Motor 2 runs forward at full speed.
-  delay (50000); //adjust to be specific amount of turning 180 degress
+  left_wall_cm(); 
+  right_wall_cm(); 
+  read_front_cm(); 
+  delay (5000); //adjust to be specific amount of turning 180 degress
 }
 
 //Line follwoing 
-void followLine() {
+void follow_line() {
   
   uint16_t position = qtr.readLineBlack(sensorValues);
   int error = position - 2500;
@@ -353,13 +357,18 @@ void followLine() {
   motor_forward();
   Serial.println("forward");
   
-  read_front_cm(); 
+  left_wall_cm(); 
+  right_wall_cm(); 
+  read_front_cm();  
 }
 
 void motor_turnleft() {
   motor1.setSpeed(TurnSpeed);   // Motor 1 runs forward at half speed.
   motor2.setSpeed(-TurnSpeed);  // Motor 2 runs backward at half speed.
   Serial.println("left");
+  left_wall_cm(); 
+  right_wall_cm(); 
+  read_front_cm(); 
   delay(500);
 }
 
@@ -367,6 +376,9 @@ void motor_turnright() {
   motor1.setSpeed(-TurnSpeed);  // Motor 1 runs backward at half speed.
   motor2.setSpeed(TurnSpeed);   // Motor 2 runs forward at half speed.
   Serial.println("right");
+  left_wall_cm(); 
+  right_wall_cm(); 
+  read_front_cm(); 
   delay(500);
 }
 void motor_forward() {
@@ -399,10 +411,25 @@ void motor_adjust(int error) {
 
 }
 
+void motor_sharpright() {
+  motor1.setSpeed(BaseSpeed);
+  motor2.setSpeed(-BaseSpeed);
+  delay(500);  // Adjust for sharper turns if needed
+}
+
+void motor_sharpleft() {
+  motor1.setSpeed(-BaseSpeed);
+  motor2.setSpeed(BaseSpeed);
+  delay(500);  // Adjust for sharper turns if needed
+}
 
 //maze 
 void maze()
 {
+  right_wall_cm(); 
+  left_wall_cm();
+
+
   while (distance_Rwall <  20) 
   {
     follow_line(); 
@@ -858,7 +885,7 @@ void maze()
     follow_line(); 
   }
 
-  motor_stop():
+  motor_stop();
 
 /*forward
 sharpright
