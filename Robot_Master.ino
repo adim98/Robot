@@ -302,6 +302,10 @@ void follow_line() {
   float lastError = error;
   float motorSpeed = Kp * error + Kd * (error - lastError);
 
+  left_wall_cm(); 
+  right_wall_cm(); 
+  read_front_cm(); 
+  
   for (uint8_t i = 0; i < SensorCount; i++) {
     Serial.print(sensorValues[i]);
     Serial.print('\t');
