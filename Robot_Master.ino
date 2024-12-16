@@ -412,15 +412,17 @@ void motor_adjust(int error) {
 }
 
 void motor_sharpright() {
-  motor1.setSpeed(BaseSpeed);
-  motor2.setSpeed(-BaseSpeed);
-  delay(500);  // Adjust for sharper turns if needed
+  motor1.setSpeed(-150);  // Motor 1 runs backward at higher speed.
+  motor2.setSpeed(150);   // Motor 2 runs forward at higher speed.
+  delay(1000);            // Adjust delay for a sharper turn.
+  Serial.println("sharp right");
 }
 
 void motor_sharpleft() {
-  motor1.setSpeed(-BaseSpeed);
-  motor2.setSpeed(BaseSpeed);
-  delay(500);  // Adjust for sharper turns if needed
+  motor1.setSpeed(150);   // Motor 1 runs forward at higher speed.
+  motor2.setSpeed(-150);  // Motor 2 runs backward at higher speed.
+  delay(1000);            // Adjust delay for a sharper turn.
+  Serial.println("sharp left");
 }
 
 //maze 
