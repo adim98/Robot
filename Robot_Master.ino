@@ -127,7 +127,7 @@ void left_wall_cm() //convert distance into cm
  
   int Lwall_distance = 5;            //desired cm from wall 
   float distance_Lwall = getDistance(trigPin3, echoPin3);   //variable to store the distance measured by the sensor
-  delay (500);                     //wait 500 ms between ping 
+   
 }
 
 //Section to measure distance of right wall
@@ -135,16 +135,13 @@ void right_wall_cm() //convert distance into cm
 {
   int Rwall_distance = 5;            //desired cm from wall
   float distance_Rwall = getDistance(trigPin4, echoPin4);
-  delay (500);                     //wait 500 ms between ping 
-}
 
+}
 //Section to measure distance in front 
 void read_front_cm() 
 {
   int cyl_detected = 7;              //desired cm from cylinder
-  float distancefront1 = getDistance(trigPin1, echoPin1);
-
-  delay (500);                     //wait 500 ms between ping 
+  float distancefront1 = getDistance(trigPin1, echoPin1); 
 
   if (distancefront1 == cyl_detected) 
   {
@@ -334,6 +331,9 @@ void follow_line() {
   }
   else {
     motor_adjust(error);
+    left_wall_cm(); 
+    right_wall_cm(); 
+    read_front_cm();
     return;
   }
 
@@ -360,6 +360,7 @@ void follow_line() {
   left_wall_cm(); 
   right_wall_cm(); 
   read_front_cm();  
+
 }
 
 void motor_turnleft() {
