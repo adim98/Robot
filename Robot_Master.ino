@@ -11,7 +11,7 @@ Servo myservo;
 Servo myservo2; 
 
 //Distance Sensors 
-#define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 #define SONAR_NUM 4     // Number of sensors.
 NewPing sonar[SONAR_NUM] = {   // Sensor object array.
   NewPing(2, 1, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
@@ -20,25 +20,26 @@ NewPing sonar[SONAR_NUM] = {   // Sensor object array.
   NewPing(13, 12, MAX_DISTANCE)
 };
 
+
 //distance variables
 float distance_Rwall = 0;
 float distance_Lwall = 0;
 
 //cylinder sensor
-#define trigPin1 2
+#define trigPin1 2  
 #define echoPin1 1
 
 //front wall sensor
-#define trigPin2 8
-#define echoPin2 7
+#define trigPin2 8  //green wire
+#define echoPin2 7  //white wire 
 
 //Left wall sensor
-#define trigPin3 0
-#define echoPin3 4
+#define trigPin3 0  
+#define echoPin3 4  
 
 //right wall sensor 
-#define trigPin4 13
-#define echoPin4 12
+#define trigPin4 13 //yellow wire
+#define echoPin4 12 //brown wire
 
 //Motors 
 CytronMD motor1(PWM_PWM, 3,5 );   // PWM 1A = Pin 2, PWM 1B = Pin 3.
@@ -58,7 +59,7 @@ const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
 
 //cylinder variable 
-const int collected_cyl = 0; 
+int collected_cyl = 0; 
 
 void setup() 
 {
@@ -85,7 +86,7 @@ void setup()
   pinMode(echoPin3, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
   pinMode(trigPin4, OUTPUT);                         //the trigger pin will output pulses of electricity
   pinMode(echoPin4, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
-  
+
   //establish line sensor
   qtr.setTypeAnalog();
   qtr.setSensorPins((const uint8_t[]){ A0, A1, A2, A3, A4, A5 }, SensorCount);
@@ -106,13 +107,16 @@ void setup()
   }
   digitalWrite(LED_BUILTIN, LOW);  // turn off Arduino's LED to indicate we are through with calibration
   
-  delay(3000);
-
   //set the servos into place 
   arm_up(); 
   arm_open();
+  delay(3000);
+}
+
+void loop(){
 
   //start measuring wall distances 
+  Serial.print("measure first time ever ");
   left_wall_cm(); 
   right_wall_cm(); 
   read_front_cm(); 
@@ -121,20 +125,24 @@ void setup()
   maze();
 }
 
-//Section to measure distance of left wall
+/////////////////////////////walls//////////////////////////////////////////////////////////////////////////
+  //Section to measure distance of left wall
 void left_wall_cm() //convert distance into cm 
 {
  
-  int Lwall_distance = 5;            //desired cm from wall 
-  float distance_Lwall = getDistance(trigPin3, echoPin3);   //variable to store the distance measured by the sensor
+  distance_Lwall = getDistance(trigPin3, echoPin3);   //variable to store the distance measured by the sensor
+  Serial.print("left wall:");
+  Serial.println(distance_Lwall);
+
    
 }
 
 //Section to measure distance of right wall
 void right_wall_cm() //convert distance into cm 
 {
-  int Rwall_distance = 5;            //desired cm from wall
-  float distance_Rwall = getDistance(trigPin4, echoPin4);
+  distance_Rwall = getDistance(trigPin4, echoPin4);
+  Serial.print("right wall:");
+  Serial.println(distance_Rwall);
 
 }
 //Section to measure distance in front 
@@ -142,32 +150,35 @@ void read_front_cm()
 {
   int cyl_detected = 7;              //desired cm from cylinder
   float distancefront1 = getDistance(trigPin1, echoPin1); 
+  float distancefront2 = getDistance(trigPin2, echoPin2);
 
   if (distancefront1 == cyl_detected) 
   {
-  float distancefront2 = getDistance(trigPin2, echoPin2);
-  delay (500);                     //wait 500 ms between ping 
+     
     if (distancefront2 > distancefront1+2)
     {
       //count number of cylinders collected 
       //collect the cylinder
-      pick_up_cylinder(); 
+      Serial.println("cylinder detected!");
+      //pick_up_cylinder(); 
       return;
     }
     else
     {
-      Serial.print("not a cylinder:");
-      Serial.print(distancefront1);
-      Serial.print(" and ");
-      Serial.print(distancefront2);
-      motor_turnaround(); 
+      Serial.print("not a cylinder: ");
+      Serial.print( distancefront1);
+      Serial.print("  and  ");
+      Serial.println( distancefront2);
+      //motor_turnaround(); 
       return;
     }
  
   }
   else {
-    Serial.print("distance too far:");
-    Serial.println(distancefront1);
+    Serial.print("distance too far: ");
+    Serial.print(distancefront1);
+    Serial.print(" and ");
+    Serial.println(distancefront2);
     return;
   }
 
@@ -179,13 +190,13 @@ float getDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
 
   float echoTime = pulseIn(echoPin, HIGH);
-  float distance = echoTime * 0.0344 / 2; // Calculate distance in cm
+  int distance = echoTime * 0.0344 / 2; // Calculate distance in cm
+  delay(10); 
   return distance;
-  delay (500);
 }
-                    
-
-//Section to pick up cylinder 
+  
+                  
+////////////////////////////////////Section to pick up cylinder //////////////////////////////////////////////////
 void pick_up_cylinder()
 {
 
@@ -228,6 +239,9 @@ void pick_up_cylinder()
 
   delay (1500);
 
+  //add that you have collected a cylinder 
+  collected_cyl += 1; 
+  return collected_cyl; 
 }
 
 //arm movements
@@ -280,7 +294,7 @@ void arm_up()
 
 }
 
-
+//////////////////////////////////////MOTOR/////////////////////////////////////////////////////////////////////
 void motor_turnaround()
 {
   motor1.setSpeed(0);  // Motor 1 stops.
@@ -288,6 +302,7 @@ void motor_turnaround()
   //turn right
   motor1.setSpeed(-100);  // Motor 1 runs backward at full speed.
   motor2.setSpeed(100);   // Motor 2 runs forward at full speed.
+  Serial.print("measure fl begin ");
   left_wall_cm(); 
   right_wall_cm(); 
   read_front_cm(); 
@@ -321,7 +336,7 @@ void follow_line() {
     Serial.println("stop");
 
   } 
-  else if (position > 3200) {
+  else if (position > 3300) {
     motor1.setSpeed(BaseSpeed);
     motor2.setSpeed(BaseSpeed);
     motor_turnleft();
@@ -335,6 +350,7 @@ void follow_line() {
   }
   else {
     motor_adjust(error);
+    Serial.println("measure adjust ");
     left_wall_cm(); 
     right_wall_cm(); 
     read_front_cm();
@@ -361,6 +377,7 @@ void follow_line() {
   motor_forward();
   Serial.println("forward");
   
+  Serial.print("measure fl end ");
   left_wall_cm(); 
   right_wall_cm(); 
   read_front_cm();  
@@ -399,7 +416,7 @@ void motor_stop() {
   delay(1000);
 }
 void motor_adjust(int error) {
-  int adjustFactor = error/20;
+  int adjustFactor = error/30;
   if (error<-1){
     motor1.setSpeed(BaseSpeed+adjustFactor);
   }
@@ -417,27 +434,27 @@ void motor_adjust(int error) {
 }
 
 void motor_sharpright() {
-  motor1.setSpeed(-150);  // Motor 1 runs backward at higher speed.
-  motor2.setSpeed(150);   // Motor 2 runs forward at higher speed.
-  delay(1000);            // Adjust delay for a sharper turn.
+  motor1.setSpeed(30);  // Motor 1 runs backward at higher speed.
+  motor2.setSpeed(75);   // Motor 2 runs forward at higher speed.
+  delay(3200);            // Adjust delay for a sharper turn.
   Serial.println("sharp right");
 }
 
 void motor_sharpleft() {
-  motor1.setSpeed(150);   // Motor 1 runs forward at higher speed.
-  motor2.setSpeed(-150);  // Motor 2 runs backward at higher speed.
-  delay(1000);            // Adjust delay for a sharper turn.
+  motor1.setSpeed(75);   // Motor 1 runs forward at higher speed.
+  motor2.setSpeed(30);  // Motor 2 runs backward at higher speed.
+  delay(3200);            // Adjust delay for a sharper turn.
   Serial.println("sharp left");
 }
 
-//maze 
+///////////////////////////////MAZE//////////////////////////////////////////////////////////////////////
 void maze()
 {
   right_wall_cm(); 
   left_wall_cm();
 
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -445,7 +462,7 @@ void maze()
   motor_sharpright(); 
   delay(150);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -453,7 +470,7 @@ void maze()
   motor_sharpleft();
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -461,7 +478,7 @@ void maze()
   motor_sharpleft();
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -469,7 +486,7 @@ void maze()
   motor_sharpright();
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -479,7 +496,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -487,7 +504,7 @@ void maze()
   motor_sharpleft();
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -495,7 +512,7 @@ void maze()
   motor_sharpleft();
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -503,7 +520,7 @@ void maze()
   motor_sharpright();
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -511,7 +528,7 @@ void maze()
   motor_sharpright();
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     //follow_line(); 
     motor_forward();
@@ -521,7 +538,7 @@ void maze()
   motor_sharpright();
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -529,7 +546,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -537,7 +554,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000); 
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -545,7 +562,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -553,7 +570,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000); 
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     motor_forward();
     delay(1000); 
@@ -562,7 +579,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -570,7 +587,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -578,7 +595,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -586,7 +603,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -594,7 +611,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -602,7 +619,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -610,7 +627,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -618,7 +635,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     motor_forward();
     delay(1000);  
@@ -627,7 +644,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -635,7 +652,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -643,7 +660,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -651,7 +668,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -659,7 +676,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     motor_forward();
     delay(1000);  
@@ -669,8 +686,9 @@ void maze()
   delay(1000);
 
 
-//IF THRE CYLINDERS HAVE BEEN COLLECTED 
-  while (distance_Lwall <  20) 
+/////////IF THREE CYLINDERS HAVE BEEN COLLECTED GO TO EXIT////////
+if (collected_cyl == 3){
+  while (distance_Lwall <  30) 
   {
     motor_forward();
     delay(1000);
@@ -679,7 +697,7 @@ void maze()
   motor_sharpleft();
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -687,15 +705,15 @@ void maze()
   motor_sharpleft();
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
 
   motor_stop(); 
-
-//IF NOT KEEP GOING 
-  while (distance_Rwall <  20) 
+}
+else { /////////IF NOT KEEP GOING ////////
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -703,7 +721,7 @@ void maze()
   motor_sharpright (); 
   delay(1000); 
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -711,7 +729,7 @@ void maze()
   motor_sharpright (); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -719,7 +737,7 @@ void maze()
   motor_sharpright (); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -727,7 +745,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -735,7 +753,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -743,7 +761,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -751,7 +769,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -759,7 +777,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -767,7 +785,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -775,7 +793,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -783,7 +801,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -791,7 +809,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -799,7 +817,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -807,7 +825,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -815,7 +833,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -823,7 +841,7 @@ void maze()
   motor_turnaround(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -831,7 +849,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -839,7 +857,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -847,7 +865,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -855,7 +873,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -863,7 +881,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
@@ -871,7 +889,7 @@ void maze()
   motor_sharpright(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -879,7 +897,7 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Lwall <  20) 
+  while (distance_Lwall <  30) 
   {
     follow_line(); 
   }
@@ -887,12 +905,13 @@ void maze()
   motor_sharpleft(); 
   delay(1000);
 
-  while (distance_Rwall <  20) 
+  while (distance_Rwall <  30) 
   {
     follow_line(); 
   }
-
+  /////exit//////
   motor_stop();
+}
 
 /*forward
 sharpright
