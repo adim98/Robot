@@ -249,14 +249,16 @@ bool followLineForDuration(unsigned long durationMillis) {
 void motor_turnleft() {
   motor1.setSpeed(-TurnSpeed);
   motor2.setSpeed(TurnSpeed);
-  delay(1100);  // Increase delay for a complete turn
+  delay(900);  // Increase delay for a complete turn
+  while(!(qtr.readLineBlack(sensorValues) > 2400 && qtr.readLineBlack(sensorValues) < 2600); // continues turning until parallel with line
   motor_stop();
 }
 
 void motor_turnright() {
   motor1.setSpeed(TurnSpeed);
   motor2.setSpeed(-TurnSpeed);
-  delay(1100);  // Increase delay for a complete turn
+  delay(900);  // Increase delay for a complete turn
+  while(!(qtr.readLineBlack(sensorValues) > 2400 && qtr.readLineBlack(sensorValues) < 2600); // continues turning until parallel with line
   motor_stop();
 }
 
@@ -613,6 +615,7 @@ void read_front_cm()
 // void motor_turnleft() {
 //   motor1.setSpeed(-TurnSpeed);
 //   motor2.setSpeed(TurnSpeed);
+
 //   delay(800);  // Increase delay for a complete turn
 //   motor_stop();
 // }
