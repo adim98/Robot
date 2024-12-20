@@ -1,0 +1,670 @@
+#include <CytronMotorDriver.h>
+#include <QTRSensors.h>
+#include <Servo.h>
+#include <NewPing.h>
+
+
+#define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+
+
+//cylinder sensor
+#define trigPin1 2 
+#define echoPin1 1
+
+//front wall sensor
+#define trigPin2 8  //green wire
+#define echoPin2 7  //white wire 
+
+NewPing sonar(trigPin1, echoPin1, MAX_DISTANCE);
+
+
+Servo clawservo;  // create Servo object to control a servo
+Servo armservo;
+
+
+int up = 180, down = 90, closed = 80, open = 180;    // variable to store the servo position
+
+
+QTRSensors qtr;
+CytronMD motor1(PWM_PWM, 3, 5);
+CytronMD motor2(PWM_PWM, 6, 11);
+
+#define Kp 0.030
+#define Kd 0.0002
+#define MaxSpeed 180
+#define BaseSpeed 80
+#define TurnSpeed 120
+
+const uint8_t SensorCount = 6;
+uint16_t sensorValues[SensorCount];
+
+String directions[] = {"followline", "turnleft", "followline", "turnright", "followline_in_3SEC", "turnright",
+                      "followline","turnleft","followline", "turn180", "followline", "turnright", "followline_in_4SEC","turnleft", "followline_in_5SEC", "turnleft","followline","turnright", "followline"};
+int directionIndex = 0;
+int directionCount = sizeof(directions) / sizeof(directions[0]);
+
+
+
+void setup() {
+  pinMode(trigPin1, OUTPUT);                         //the trigger pin will output pulses of electricity
+  pinMode(echoPin1, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+  pinMode(trigPin2, OUTPUT);                         //the trigger pin will output pulses of electricity
+  pinMode(echoPin2, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+
+
+  clawservo.attach(9);  // attaches the servo on pin 9 to the Servo object
+  armservo.attach(10);
+
+  armservo.write(up);
+  clawservo.write(open);
+
+
+  motor1.setSpeed(0);  // Motor 1 stops.
+  motor2.setSpeed(0);  // Motor 2 stops.
+
+  // Initialize the line sensor
+  qtr.setTypeAnalog();
+  qtr.setSensorPins((const uint8_t[]){ A0, A1, A2, A3, A4, A5 }, SensorCount);
+
+  Serial.begin(9600);
+  delay(500);
+  Serial.println("QTR calibration");
+
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // LED turns ON to indicate the start of the calibration
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  // Spin the robot to calibrate the sensors
+  spinForCalibration(8000); // Spin for 3 seconds (adjust as needed)
+
+  digitalWrite(LED_BUILTIN, LOW);  // Turn off Arduino's LED to indicate calibration is complete
+  delay(3000);
+}
+
+void spinForCalibration(unsigned long durationMillis) {
+  unsigned long startTime = millis(); // Record the start time
+
+  // Make the robot spin by setting one motor forward and the other in reverse
+  motor1.setSpeed(100); // Adjust speed as necessary
+  motor2.setSpeed(-100);
+
+  // Calibrate sensors while spinning
+  while (millis() - startTime < durationMillis) {
+    qtr.calibrate(); // Perform calibration
+  }
+
+  // Stop the motors after spinning
+  motor_stop();
+}
+void loop() {
+  if (directionIndex < directionCount) {
+    Serial.print("Executing direction: ");
+    Serial.println(directions[directionIndex]);
+    executeDirection(directions[directionIndex]);
+  } else {
+    motor_stop();
+    while (true);  // Stop loop
+  }
+}
+
+void executeDirection(String direction) {
+  if (direction == "followline") {
+    if (followLine()) {
+      directionIndex++;
+    }
+  } else if (direction == "turnright") {
+    motor_turnright();
+    directionIndex++;
+  } else if (direction == "turnleft") {
+    motor_turnleft();
+    directionIndex++;
+  }
+  else if (direction == "turn180") {
+    motor_turn180();
+    directionIndex++;
+  }
+  else if (direction == "followline_in_3SEC") {
+    if (followLineForDuration(3400)) { // Follow line for 3 seconds
+      directionIndex++;
+    }
+  }
+  else if (direction == "followline_in_4SEC") {
+    if (followLineForDuration(3650)) { // Follow line for 3 seconds
+      directionIndex++;
+    }
+  }
+  else if (direction == "followline_in_5SEC") {
+    if (followLineForDuration(4000)) { // Follow line for 3 seconds
+      directionIndex++;
+    }
+  }
+}
+
+bool followLine() {
+  uint16_t position = qtr.readLineBlack(sensorValues);
+  int error = position - 2500;
+
+  // Check for cylinder detection
+  float distancefront1 = getDistance(trigPin1, echoPin1);
+  if (distancefront1 < 10) { // Adjust threshold for detecting the cylinder
+    Serial.println("Cylinder detected during line following!");
+    motor_stop();
+    pickingup(); // Pick up the cylinder
+  }
+
+  // Check if robot is at the edge of the line
+  bool atEdge = true;
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    if (sensorValues[i] > 100) {  // Adjust threshold as needed
+      atEdge = false;
+      break;
+    }
+  }
+
+  if (atEdge) {
+    motor_stop();
+    delay(500);
+    return true;
+  }
+
+  int leftSpeed = BaseSpeed + Kp * error;
+  int rightSpeed = BaseSpeed - Kp * error;
+
+  motor1.setSpeed(constrain(leftSpeed, -MaxSpeed, MaxSpeed));
+  motor2.setSpeed(constrain(rightSpeed, -MaxSpeed, MaxSpeed));
+
+  return false;
+}
+
+void pickingup() {
+  armservo.write(up);
+  clawservo.write(open);
+  delay(1000);
+
+  for(int i = up; i >= down; i--) {
+    armservo.write(i);
+    delay(5);
+  }
+
+
+  delay(200);
+
+  clawservo.write(closed);
+  delay(200);
+  float upDelay = 50;
+  for(int i = down; i <= up; i++) {
+    armservo.write(i);
+    delay(upDelay);
+    upDelay = upDelay*0.9;
+  }
+  delay(300);
+  clawservo.write(open);
+
+  delay(5000);
+
+}
+
+bool followLineForDuration(unsigned long durationMillis) {
+  unsigned long startTime = millis(); // Record the start time
+  while (millis() - startTime < durationMillis) {
+    uint16_t position = qtr.readLineBlack(sensorValues);
+    int error = position - 2500;
+
+    // Check for cylinder detection
+    float distancefront1 = getDistance(trigPin1, echoPin1);
+    if (distancefront1 < 10) { // Adjust threshold for detecting the cylinder
+      Serial.println("Cylinder detected during timed line following!");
+      pickingup(); // Pick up the cylinder
+    }
+
+    // Check if the robot is at the edge of the line
+    bool atEdge = true;
+    for (uint8_t i = 0; i < SensorCount; i++) {
+      if (sensorValues[i] > 200) { // Adjust threshold as needed
+        atEdge = false;
+        break;
+      }
+    }
+
+    if (atEdge) {
+      motor_stop();
+      delay(500); // Brief pause at the edge
+      return true; // Exit if the robot leaves the line
+    }
+
+    // PID-based speed adjustments
+    int leftSpeed = BaseSpeed + Kp * error;
+    int rightSpeed = BaseSpeed - Kp * error;
+
+    motor1.setSpeed(constrain(leftSpeed, -MaxSpeed, MaxSpeed));
+    motor2.setSpeed(constrain(rightSpeed, -MaxSpeed, MaxSpeed));
+  }
+
+  motor_stop(); // Stop the motors after the duration
+  return true;  // Indicate that the action is complete
+}
+
+
+void motor_turnleft() {
+  motor1.setSpeed(-TurnSpeed);
+  motor2.setSpeed(TurnSpeed);
+  delay(500);  // Increase delay for a complete turn
+  while(!(qtr.readLineBlack(sensorValues) > 2400 && qtr.readLineBlack(sensorValues) < 2600)); // continues turning until parallel with line
+  motor_stop();
+}
+
+void motor_turnright() {
+  motor1.setSpeed(TurnSpeed);
+  motor2.setSpeed(-TurnSpeed);
+  delay(500);  // Increase delay for a complete turn
+  while(!(qtr.readLineBlack(sensorValues) > 2400 && qtr.readLineBlack(sensorValues) < 2600)); // continues turning until parallel with line
+  motor_stop();
+}
+
+void motor_stop() {
+  motor1.setSpeed(0);
+  motor2.setSpeed(0);
+  delay(1000);
+}
+
+void motor_turn180() {
+  // Reverse one motor and forward the other for a longer delay
+  motor1.setSpeed(-180);  // Reverse left motor
+  motor2.setSpeed(180);   // Forward right motor
+  delay(800);  // Adjust this delay for a precise 180-degree turn
+  while(!(qtr.readLineBlack(sensorValues) > 2400 && qtr.readLineBlack(sensorValues) < 2600)); // continues turning until parallel with line
+  motor_stop();  // Stop after the turn
+}
+
+//distance sensor sensing 
+float getDistance(int trigPin, int echoPin) {
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(50); // Send a pulse that is 50 ms long
+  digitalWrite(trigPin, LOW);
+
+  float echoTime = pulseIn(echoPin, HIGH);
+  int distance = echoTime * 0.0344 / 2; // Calculate distance in cm
+  delay(100); 
+  return distance;
+}
+
+//Section to measure distance in front 
+void read_front_cm() 
+{
+  int cyl_detected = 8;              //desired cm from cylinder
+  float distancefront1 = getDistance(trigPin1, echoPin1); 
+  float distancefront2 = getDistance(trigPin2, echoPin2);
+
+  if (distancefront1 == cyl_detected) 
+  {
+     
+    if (distancefront2 > distancefront1+10)
+    {
+      //count number of cylinders collected 
+      //collect the cylindere
+      Serial.println("cylinder detected!");
+      //pick_up_cylinder(); 
+      return;
+    }
+    else
+    {
+      Serial.print("not a cylinder: ");
+      Serial.print( distancefront1);
+      Serial.print("  and  ");
+      Serial.println( distancefront2);
+      //motor_turnaround(); 
+      return;
+    }
+ 
+  }
+  else {
+    Serial.print("distance too far: ");
+    Serial.print(distancefront1);
+    Serial.print(" and ");
+    Serial.println(distancefront2);
+    return;
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+// #include <CytronMotorDriver.h>
+// #include <QTRSensors.h>
+// #include <Servo.h>
+// #include <NewPing.h>
+
+
+// #define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+
+
+// //cylinder sensor
+// #define trigPin1 2 
+// #define echoPin1 1
+// NewPing sonar(trigPin1, echoPin1, MAX_DISTANCE);
+
+
+// Servo clawservo;  // create Servo object to control a servo
+// Servo armservo;
+
+
+// int up = 180, down = 90, closed = 80, open = 180;    // variable to store the servo position
+
+
+// QTRSensors qtr;
+// CytronMD motor1(PWM_PWM, 3, 5);
+// CytronMD motor2(PWM_PWM, 6, 11);
+
+// #define Kp 0.018
+// #define Kd 0.0001
+// #define MaxSpeed 180
+// #define BaseSpeed 80
+// #define TurnSpeed 120
+
+// const uint8_t SensorCount = 6;
+// uint16_t sensorValues[SensorCount];
+
+// String directions[] = {"followline", "turnleft", "followline", "turnright", "followline_in_3SEC", "turnright",
+//                       "followline","turnleft","followline", "turn180", "followline", "turnright", "followline_in_4SEC","turnleft", "followline_in_5SEC", "turnleft","followline","turnright", "followline"};
+// int directionIndex = 0;
+// int directionCount = sizeof(directions) / sizeof(directions[0]);
+
+
+
+// void setup() {
+//   pinMode(trigPin1, OUTPUT);                         //the trigger pin will output pulses of electricity
+//   pinMode(echoPin1, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+
+
+//   clawservo.attach(9);  // attaches the servo on pin 9 to the Servo object
+//   armservo.attach(10);
+
+//   armservo.write(up);
+//   clawservo.write(open);
+
+
+//   motor1.setSpeed(0);  // Motor 1 stops.
+//   motor2.setSpeed(0);  // Motor 2 stops.
+
+//   // Initialize the line sensor
+//   qtr.setTypeAnalog();
+//   qtr.setSensorPins((const uint8_t[]){ A0, A1, A2, A3, A4, A5 }, SensorCount);
+
+//   Serial.begin(9600);
+//   delay(500);
+//   Serial.println("QTR calibration");
+
+//   pinMode(LED_BUILTIN, OUTPUT);
+
+//   // LED turns ON to indicate the start of the calibration
+//   digitalWrite(LED_BUILTIN, HIGH);
+
+//   // Spin the robot to calibrate the sensors
+//   spinForCalibration(8000); // Spin for 3 seconds (adjust as needed)
+
+//   digitalWrite(LED_BUILTIN, LOW);  // Turn off Arduino's LED to indicate calibration is complete
+//   delay(3000);
+// }
+
+// void spinForCalibration(unsigned long durationMillis) {
+//   unsigned long startTime = millis(); // Record the start time
+
+//   // Make the robot spin by setting one motor forward and the other in reverse
+//   motor1.setSpeed(100); // Adjust speed as necessary
+//   motor2.setSpeed(-100);
+
+//   // Calibrate sensors while spinning
+//   while (millis() - startTime < durationMillis) {
+//     qtr.calibrate(); // Perform calibration
+//   }
+
+//   // Stop the motors after spinning
+//   motor_stop();
+// }
+// void loop() {
+//   if (directionIndex < directionCount) {
+//     Serial.print("Executing direction: ");
+//     Serial.println(directions[directionIndex]);
+//     executeDirection(directions[directionIndex]);
+//   } else {
+//     motor_stop();
+//     while (true);  // Stop loop
+//   }
+// }
+
+// void executeDirection(String direction) {
+//   if (direction == "followline") {
+//     if (followLine()) {
+//       directionIndex++;
+//     }
+//   } else if (direction == "turnright") {
+//     motor_turnright();
+//     directionIndex++;
+//   } else if (direction == "turnleft") {
+//     motor_turnleft();
+//     directionIndex++;
+//   }
+//   else if (direction == "turn180") {
+//     motor_turn180();
+//     directionIndex++;
+//   }
+//   else if (direction == "followline_in_3SEC") {
+//     if (followLineForDuration(3000)) { // Follow line for 3 seconds
+//       directionIndex++;
+//     }
+//   }
+//   else if (direction == "followline_in_4SEC") {
+//     if (followLineForDuration(3300)) { // Follow line for 3 seconds
+//       directionIndex++;
+//     }
+//   }
+//   else if (direction == "followline_in_5SEC") {
+//     if (followLineForDuration(3600)) { // Follow line for 3 seconds
+//       directionIndex++;
+//     }
+//   }
+// }
+
+// bool followLine() {
+//   static int lastError = 0;    // Previous error for derivative calculation
+//   static float integral = 0;  // Accumulated integral
+
+//   uint16_t position = qtr.readLineBlack(sensorValues);
+//   int error = position - 2500; // Centerline is at 2500 for 6 sensors
+
+//   // Proportional term
+//   float P = Kp * error;
+
+//   // Integral term
+//   integral += error;
+//   integral = constrain(integral, -5000, 5000); // Prevent integral windup
+//   float I = 0.0001 * integral; // Adjust Ki value
+
+//   // Derivative term
+//   float D = Kd * (error - lastError);
+
+//   // PID correction
+//   int correction = P + I + D;
+
+//   // Update lastError
+//   lastError = error;
+//   //   // Check for cylinder detection
+//   float distancefront1 = getDistance(trigPin1, echoPin1);
+//   if (distancefront1 < 10) { // Adjust threshold for detecting the cylinder
+//     Serial.println("Cylinder detected during line following!");
+//     motor_stop();
+//     pickingup(); // Pick up the cylinder
+//   }
+
+//   // Check if all sensors detect black (e.g., sharp corner)
+//   bool allBlack = true;
+//   for (uint8_t i = 0; i < SensorCount; i++) {
+//     if (sensorValues[i] < 800) { // Adjust threshold for "black" detection
+//       allBlack = false;
+//       break;
+//     }
+//   }
+
+//   if (allBlack) {
+//     Serial.println("Sharp turn detected!");
+//     motor_turnright(); // Force a sharp right turn
+//     return false;      // Continue after the turn
+//   }
+
+//   // Calculate motor speeds
+//   int leftSpeed = constrain(BaseSpeed + correction, -MaxSpeed, MaxSpeed);
+//   int rightSpeed = constrain(BaseSpeed - correction, -MaxSpeed, MaxSpeed);
+
+//   // Adjust motor speeds for sharp turns
+//   if (error > 1000) { // Sharp right turn
+//     leftSpeed += 20;  // Boost left motor for a stronger right turn
+//     rightSpeed -= 20; // Slow down right motor
+//   } else if (error < -1000) { // Sharp left turn
+//     leftSpeed -= 20;  // Slow down left motor
+//     rightSpeed += 20; // Boost right motor
+//   }
+
+//   // Set motor speeds
+//   motor1.setSpeed(leftSpeed);
+//   motor2.setSpeed(rightSpeed);
+
+//   return false;
+// }
+
+
+
+
+
+// void pickingup() {
+//   armservo.write(up);
+//   clawservo.write(open);
+//   delay(1000);
+
+//   for(int i = up; i >= down; i--) {
+//     armservo.write(i);
+//     delay(5);
+//   }
+
+
+//   delay(200);
+
+//   clawservo.write(closed);
+//   delay(200);
+//   float upDelay = 50;
+//   for(int i = down; i <= up; i++) {
+//     armservo.write(i);
+//     delay(upDelay);
+//     upDelay = upDelay*0.9;
+//   }
+//   delay(300);
+//   clawservo.write(open);
+
+//   delay(5000);
+
+// }
+
+// bool followLineForDuration(unsigned long durationMillis) {
+//   unsigned long startTime = millis(); // Record the start time
+//   while (millis() - startTime < durationMillis) {
+//     uint16_t position = qtr.readLineBlack(sensorValues);
+//     int error = position - 2500;
+
+//     // Check for cylinder detection
+//     float distancefront1 = getDistance(trigPin1, echoPin1);
+//     if (distancefront1 < 10) { // Adjust threshold for detecting the cylinder
+//       Serial.println("Cylinder detected during timed line following!");
+//       pickingup(); // Pick up the cylinder
+//     }
+
+//     // Check if the robot is at the edge of the line
+//     bool atEdge = true;
+//     for (uint8_t i = 0; i < SensorCount; i++) {
+//       if (sensorValues[i] > 200) { // Adjust threshold as needed
+//         atEdge = false;
+//         break;
+//       }
+//     }
+
+//     if (atEdge) {
+//       motor_stop();
+//       delay(500); // Brief pause at the edge
+//       return true; // Exit if the robot leaves the line
+//     }
+
+//     // PID-based speed adjustments
+//     int leftSpeed = BaseSpeed + Kp * error;
+//     int rightSpeed = BaseSpeed - Kp * error;
+
+//     motor1.setSpeed(constrain(leftSpeed, -MaxSpeed, MaxSpeed));
+//     motor2.setSpeed(constrain(rightSpeed, -MaxSpeed, MaxSpeed));
+//   }
+
+//   motor_stop(); // Stop the motors after the duration
+//   return true;  // Indicate that the action is complete
+// }
+
+
+// void motor_turnleft() {
+//   motor1.setSpeed(-TurnSpeed);
+//   motor2.setSpeed(TurnSpeed);
+
+//   delay(800);  // Increase delay for a complete turn
+//   motor_stop();
+// }
+
+// void motor_turnright() {
+//   motor1.setSpeed(TurnSpeed);
+//   motor2.setSpeed(-TurnSpeed);
+//   delay(800);  // Increase delay for a complete turn
+//   motor_stop();
+// }
+
+// void motor_stop() {
+//   motor1.setSpeed(0);
+//   motor2.setSpeed(0);
+//   delay(1000);
+// }
+
+// void motor_turn180() {
+//   // Reverse one motor and forward the other for a longer delay
+//   motor1.setSpeed(-150);  // Reverse left motor
+//   motor2.setSpeed(180);   // Forward right motor
+//   delay(1400);  // Adjust this delay for a precise 180-degree turn
+//   motor_stop();  // Stop after the turn
+// }
+// //distance sensor sensing 
+// float getDistance(int trigPin, int echoPin) {
+//   digitalWrite(trigPin, HIGH);
+//   delayMicroseconds(50); // Send a pulse that is 50 ms long
+//   digitalWrite(trigPin, LOW);
+
+//   float echoTime = pulseIn(echoPin, HIGH);
+//   int distance = echoTime * 0.0344 / 2; // Calculate distance in cm
+//   delay(100); 
+//   return distance;
+// }
+
+// void read_front_cm() 
+// {
+//   int cyl_detected = 7;              //desired cm from cylinder
+//   float distancefront1 = getDistance(trigPin1, echoPin1); 
+
+//   if (distancefront1 == cyl_detected) 
+//   {
+//     Serial.println("cylinder detected!");
+//   }
+//   else {
+//     Serial.print("distance too far: ");
+//     Serial.println(distancefront1);
+//     return;
+//   }
+// }
