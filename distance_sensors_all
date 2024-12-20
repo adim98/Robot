@@ -1,0 +1,124 @@
+//Definitions and libraries
+#include <Servo.h>                                  //servo library 
+#include <NewPing.h>                               //distance sensors library 
+#include <QTRSensors.h>                            //include the QTR reflectance sensors library 
+#include <CytronMotorDriver.h>                     // inlcudes motor library 
+
+//Distance Sensors 
+#define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define SONAR_NUM 4     // Number of sensors.
+NewPing sonar[SONAR_NUM] = {   // Sensor object array.
+  NewPing(2, 1, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+  NewPing(8, 7, MAX_DISTANCE),
+  NewPing(0, 4, MAX_DISTANCE),
+  NewPing(13, 12, MAX_DISTANCE)
+};
+
+//distance variables
+float distance_Rwall = 0;
+float distance_Lwall = 0;
+
+//cylinder sensor
+#define trigPin1 2  
+#define echoPin1 1
+
+//front wall sensor
+#define trigPin2 8  //green wire
+#define echoPin2 7  //white wire 
+
+//Left wall sensor
+#define trigPin3 0  
+#define echoPin3 4  
+
+//right wall sensor 
+#define trigPin4 13 //yellow wire
+#define echoPin4 12 //brown wire
+
+void setup(){
+//establish wall sensor setup
+  pinMode(trigPin1, OUTPUT);                         //the trigger pin will output pulses of electricity
+  pinMode(echoPin1, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+  pinMode(trigPin2, OUTPUT);                         //the trigger pin will output pulses of electricity
+  pinMode(echoPin2, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+  pinMode(trigPin3, OUTPUT);                         //the trigger pin will output pulses of electricity
+  pinMode(echoPin3, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+  pinMode(trigPin4, OUTPUT);                         //the trigger pin will output pulses of electricity
+  pinMode(echoPin4, INPUT);                          //the echo pin will measure the duration of pulses coming back from the distance sensor
+
+}
+
+void loop(){
+  left_wall_cm();
+  right_wall_cm();
+  read_front_cm();  
+}
+
+  //Section to measure distance of left wall
+void left_wall_cm() //convert distance into cm 
+{
+ 
+  distance_Lwall = getDistance(trigPin3, echoPin3);   //variable to store the distance measured by the sensor
+  Serial.print("left wall:");
+  Serial.println(distance_Lwall);
+
+   
+}
+
+//Section to measure distance of right wall
+void right_wall_cm() //convert distance into cm 
+{
+  distance_Rwall = getDistance(trigPin4, echoPin4);
+  Serial.print("right wall:");
+  Serial.println(distance_Rwall);
+
+}
+//Section to measure distance in front 
+void read_front_cm() 
+{
+  int cyl_detected = 7;              //desired cm from cylinder
+  float distancefront1 = getDistance(trigPin1, echoPin1); 
+  float distancefront2 = getDistance(trigPin2, echoPin2);
+
+  if (distancefront1 == cyl_detected) 
+  {
+     
+    if (distancefront2 > distancefront1+2)
+    {
+      //count number of cylinders collected 
+      //collect the cylinder
+      Serial.println("cylinder detected!");
+      //pick_up_cylinder(); 
+      return;
+    }
+    else
+    {
+      Serial.print("not a cylinder: ");
+      Serial.print( distancefront1);
+      Serial.print("  and  ");
+      Serial.println( distancefront2);
+      //motor_turnaround(); 
+      return;
+    }
+ 
+  }
+  else {
+    Serial.print("distance too far: ");
+    Serial.print(distancefront1);
+    Serial.print(" and ");
+    Serial.println(distancefront2);
+    return;
+  }
+
+}
+//distance sensor sensing 
+float getDistance(int trigPin, int echoPin) {
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(50); // Send a pulse that is 50 ms long
+  digitalWrite(trigPin, LOW);
+
+  float echoTime = pulseIn(echoPin, HIGH);
+  int distance = echoTime * 0.0344 / 2; // Calculate distance in cm
+  delay(100); 
+  return distance;
+}
+       
